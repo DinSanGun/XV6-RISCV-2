@@ -9,6 +9,7 @@
 #include "memlayout.h"
 #include "spinlock.h"
 #include "sleeplock.h"
+#include "petersonlock.h"
 #include "fs.h"
 #include "buf.h"
 

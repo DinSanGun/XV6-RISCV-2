@@ -8,4 +8,6 @@ struct petersonlock {
     char *name;        // Name of lock
     int owner;         // Which PID is holding the lock
   };
+
+  
   
