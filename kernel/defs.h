@@ -8,6 +8,7 @@ struct spinlock;
 struct sleeplock;
 struct stat;
 struct superblock;
+struct petersonlock;
 
 // bio.c
 void            binit(void);
@@ -184,6 +185,14 @@ void            plic_complete(int);
 void            virtio_disk_init(void);
 void            virtio_disk_rw(struct buf *, int);
 void            virtio_disk_intr(void);
+
+//  petersonlock.c
+void            petersonlockinit(void);
+void            peterson_init(struct petersonlock *lk, char *name);
+void            peterson_acquire(struct petersonlock *lk, int id);
+void            peterson_release(struct petersonlock *lk, int id);
+void            peterson_destroy(struct petersonlock *lk);
+
 
 // number of elements in fixed-size array
 #define NELEM(x) (sizeof(x)/sizeof((x)[0]))
