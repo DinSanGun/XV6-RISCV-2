@@ -5,9 +5,13 @@ struct petersonlock {
     int active;        // indicates if the lock has been initialized
     
     // For debugging
-    char *name;        // Name of lock
-    int owner;         // Which PID is holding the lock
+    // char *name;        // Name of lock
+    // int owner;         // Which PID is holding the lock
   };
+
+
+
+  
 
   
   

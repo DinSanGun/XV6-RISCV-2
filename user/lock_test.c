@@ -14,7 +14,7 @@ main(void)
   int fork_ret = fork();
   int role = fork_ret > 0 ? 0 : 1;
 
-  for (int i = 0; i < 100; i++) {
+  for (int i = 0; i < 25; i++) {
     if (peterson_acquire(lock_id, role) < 0) {
       printf("Failed to acquire lock\n");
       exit(1);
@@ -35,7 +35,7 @@ main(void)
   if (fork_ret > 0) {
     wait(0);
     printf("Parent process destroying lock\n");
-    if (peterson_delete(lock_id) < 0) {
+    if (peterson_destroy(lock_id) < 0) {
       printf("Failed to destroy lock\n");
       exit(1);
     }

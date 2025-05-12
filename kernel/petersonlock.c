@@ -1,7 +1,6 @@
 #include "types.h"
 #include "riscv.h"
 #include "defs.h"
-#include "proc.h"
 #include "petersonlock.h"
 
 #define NPLOCKS 15
@@ -18,72 +17,126 @@ petersonlockinit(void)
     plocks[i].flag[1] = 0;
     plocks[i].turn = 0;
     plocks[i].active = 0;
-    plocks[i].owner = -1;
-    plocks[i].name = 0;
   }
 }
 
 // Initialize an individual lock
-void
-peterson_init(struct petersonlock *lk, char *name)
+int
+peterson_create()
 {
-  lk->flag[0] = 0;
-  lk->flag[1] = 0;
-  lk->turn = 0;
-  lk->active = 1;
-  lk->owner = -1;
-  lk->name = name;
-  __sync_synchronize(); // full memory barrier
-}
-
-// Acquire Peterson lock for a given process ID (0 or 1)
-void
-peterson_acquire(struct petersonlock *lk, int id)
-{
-  int other = 1 - id;
-  if (!lk->active)
-    panic("peterson_acquire: lock not initialized");
-
-  __sync_synchronize();
-  __sync_lock_test_and_set(&lk->flag[id], 1);
-  lk->turn = other;
-  __sync_synchronize();
-
-  while (lk->flag[other] && lk->turn == other) {
-    yield(); // avoid busy waiting
+  for(int i = 0; i < NPLOCKS; i++){
+    if(__sync_lock_test_and_set(&plocks[i].active, 1) == 0)
+      return i;
   }
-
-  lk->owner = myproc()->pid;
+  return -1;
 }
 
-// Release Peterson lock
-void
-peterson_release(struct petersonlock *lk, int id)
+// Acquire a Peterson lock (internal implementation)
+// Returns 0 on success, -1 on failure
+int
+peterson_acquire(int lock_id, int role)
 {
-  if (!lk->active)
-    panic("peterson_release: lock not initialized");
-  if (lk->owner != myproc()->pid)
-    panic("peterson_release: not lock holder");
+  // Validate arguments
+  if(lock_id < 0 || lock_id >= NPLOCKS || plocks[lock_id].active == 0 ||
+     (role != 0 && role != 1)) {
+    return -1;
+  }
+  
+  // Peterson's algorithm to acquire the lock
+  // Set flag to indicate intention to enter critical section
+  __sync_lock_test_and_set(&plocks[lock_id].flag[role], 1); // Set to true
+  
+  // Give preference to the other process
+  plocks[lock_id].turn = role;
 
-  __sync_synchronize();
-  lk->owner = -1;
-  __sync_lock_release(&lk->flag[id]);
-  __sync_synchronize();
+  __sync_synchronize(); // Memory barrier to ensure all writes are visible
+  
+  // Wait until the other process doesn't want to enter or it's our turn
+  while(plocks[lock_id].flag[1 - role] != 0 && plocks[lock_id].turn != 1 - role) {
+    // Instead of busy-waiting, yield the CPU
+    yield();
+    
+    // Re-sync memory before checking again to get fresh values
+    __sync_synchronize();
+  }
+  
+  return 0;
 }
 
-// Deactivate a lock (mark as free)
-void
-peterson_destroy(struct petersonlock *lk)
+// Release a Peterson lock (internal implementation)
+// Returns 0 on success, -1 on failure
+int
+peterson_release(int lock_id, int role)
 {
-  if (!lk->active)
-    panic("peterson_free: lock already inactive");
+  // Validate arguments
+  if(lock_id < 0 || lock_id >= NPLOCKS || plocks[lock_id].active == 0 ||
+     (role != 0 && role != 1)) {
+    return -1;
+  }
+  
+  // Release the lock by resetting our flag
+  __sync_synchronize(); // Memory barrier before release
+  __sync_lock_release(&plocks[lock_id].flag[role]); // Set to false
+  
+  return 0;
+}
 
-  __sync_synchronize();
-  lk->active = 0;
-  lk->flag[0] = 0;
-  lk->flag[1] = 0;
-  lk->turn = 0;
-  lk->owner = -1;
-  lk->name = 0;
-  __sync_synchronize();
+// Destroy a Peterson lock (internal implementation)
+// Returns 0 on success, -1 on failure
+int
+peterson_destroy(int lock_id)
+{
+  // Validate arguments
+  if(lock_id < 0 || lock_id >= NPLOCKS|| plocks[lock_id].active == 0) 
+    return -1;
+  
+  // Mark the lock as no longer in use
+  plocks[lock_id].active = 0;
+  plocks[lock_id].flag[0] = 0;
+  plocks[lock_id].flag[1] = 0;
+  plocks[lock_id].turn = 0;
+
+  return 0;
+}
+
+// Create a new Peterson lock
+uint64
+sys_peterson_create(void)
+{
+  return peterson_create();
+}
+
+// Acquire a Peterson lock
+uint64
+sys_peterson_acquire(void)
+{
+  int lock_id, role;
+
+  argint(0, &lock_id);
+  argint(1, &role);
+  
+  return peterson_acquire(lock_id, role);
+}
+
+// Release a Peterson lock
+uint64
+sys_peterson_release(void)
+{
+  int lock_id, role;
+
+  argint(0, &lock_id);
+  argint(1, &role);
+  
+  return peterson_release(lock_id, role);
+}
+
+// Destroy a Peterson lock
+uint64
+sys_peterson_destroy(void)
+{
+  int lock_id;
+
+  argint(0, &lock_id);
+  
+  return peterson_destroy(lock_id);
 }

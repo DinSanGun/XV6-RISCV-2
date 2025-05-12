@@ -8,6 +8,7 @@
         "petersonlock.h": "c",
         "syscall.h": "c",
         "param.h": "c",
-        "user.h": "c"
+        "user.h": "c",
+        "proc.h": "c"
     },
 }

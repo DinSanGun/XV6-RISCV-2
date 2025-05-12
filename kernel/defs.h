@@ -187,11 +187,11 @@ void            virtio_disk_rw(struct buf *, int);
 void            virtio_disk_intr(void);
 
 //  petersonlock.c
-void            petersonlockinit(void);
-void            peterson_init(struct petersonlock *lk, char *name);
-void            peterson_acquire(struct petersonlock *lk, int id);
-void            peterson_release(struct petersonlock *lk, int id);
-void            peterson_destroy(struct petersonlock *lk);
+void           petersonlockinit(void);
+int            peterson_create(void);
+int            peterson_acquire(int lock_id, int role);
+int            peterson_release(int lock_id, int role);
+int            peterson_destroy(int lock_id);
 
 
 // number of elements in fixed-size array
