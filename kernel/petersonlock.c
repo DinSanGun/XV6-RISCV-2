@@ -5,6 +5,7 @@
 
 #define NPLOCKS 15
 
+
 // Global array of Peterson locks
 struct petersonlock plocks[NPLOCKS];
 
