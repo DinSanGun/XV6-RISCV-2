@@ -3,7 +3,7 @@
 #include "defs.h"
 #include "petersonlock.h"
 
-#define NPLOCKS 15
+#define NPLOCKS 16
 
 
 // Global array of Peterson locks
@@ -45,7 +45,9 @@ peterson_acquire(int lock_id, int role)
   
   // Peterson's algorithm to acquire the lock
   // Set flag to indicate intention to enter critical section
-  __sync_lock_test_and_set(&plocks[lock_id].flag[role], 1); // Set to true
+  plocks[lock_id].flag[role] = 1;  // Set to true
+  __sync_synchronize();
+  // __sync_lock_test_and_set(&plocks[lock_id].flag[role], 1); 
   
   // Give preference to the other process
   plocks[lock_id].turn = role;

@@ -13,8 +13,8 @@ int num_levels = 0;
 
 int tournament_create(int n) {
 
-  if (n < 1 || n > MAX_PROCESSES) 
-    return -1;
+  if (n < 1 || n > MAX_PROCESSES)
+     return -1;
 
   // Check if n is power of 2
   int temp = n;
@@ -58,7 +58,8 @@ int tournament_create(int n) {
 }
 
 int tournament_acquire(void) {
-  for (int i = 0; i < num_levels; i++) {
+
+  for (int i = num_levels - 1; i >= 0; i--) {
     if (peterson_acquire(my_locks[i], my_roles[i]) < 0)
       return -1;
   }
@@ -66,7 +67,7 @@ int tournament_acquire(void) {
 }
 
 int tournament_release(void) {
-  for (int i = num_levels - 1; i >= 0; i--) {
+  for (int i = 0; i < num_levels; i++) {
     if (peterson_release(my_locks[i], my_roles[i]) < 0)
       return -1;
  }

@@ -9,6 +9,7 @@
         "syscall.h": "c",
         "param.h": "c",
         "user.h": "c",
-        "proc.h": "c"
+        "proc.h": "c",
+        "stat.h": "c"
     },
 }
