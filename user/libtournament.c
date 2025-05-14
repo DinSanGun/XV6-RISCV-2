@@ -2,64 +2,70 @@
 #include "kernel/stat.h"
 #include "user/user.h"
 
-#define MAX_PROCESSES 16
-#define MAX_LOCKS 15
+#define MAX_PROCESSES_NUM 16
+#define MAX_LOCKS_NUM 15
 
-int locks[MAX_LOCKS];
-int my_roles[4];        // roles per level
-int my_locks[4];        // lock ids per level
-int my_index = -1;
-int num_levels = 0;
+int locks_ids[MAX_LOCKS_NUM];     // ids of the locks created in the kernel
+int my_roles[4];                  // roles per level of a process
+int my_locks[4];                  // lock ids per level of a process
+int current_process_index = -1;   // index in the tournament of a process
+int levels_num = 0;               // number of levels in the tree
 
 int tournament_create(int n) {
 
-  if (n < 1 || n > MAX_PROCESSES)
+  if (n < 1 || n > MAX_PROCESSES_NUM)
      return -1;
 
-  // Check if n is power of 2
+  // Check that n is power of 2
   int temp = n;
   while (temp > 1) {
-    if (temp % 2 != 0) return -1;
-    temp /= 2;
-    num_levels++;
+
+    if (temp % 2 != 0) 
+      return -1;
+
+    temp = temp / 2;
+    levels_num++;
   }
 
-  int total_locks = (1 << num_levels) - 1;
-  for (int i = 0; i < total_locks; i++) {
-    locks[i] = peterson_create();
-    if (locks[i] < 0) 
+  int locks_num = n - 1; // always 1 less than processes num
+
+  for (int i = 0; i < locks_num; i++) {
+
+    locks_ids[i] = peterson_create();
+    if (locks_ids[i] < 0) // Creation of Peterson lock failed
         return -1;
   }
 
-  // Fork to create n processes
-  for (int i = 0; i < n; i++) {
-    if (i > 0 && fork() == 0) {
-      my_index = i;
-      break;
+  // Create n processes
+  current_process_index = 0;         
+
+  for (int i = 1; i < n; i++) {
+    if (fork() == 0) {  // Only parent (caller of tournament_create) creates child processes
+      current_process_index = i;
+      break;  // child stops forking
     }
   }
-  if (my_index == -1) 
-    my_index = 0;
 
-  // Precompute roles and locks per level
-  for (int level = 0; level < num_levels; level++) {
-    
-    int div = 1 << (num_levels - level - 1);
-    int group = my_index / (1 << (num_levels - level));
+  // Compute roles and lock ids per level (for each process)
+  int node = current_process_index;
 
-    int role = (my_index / div) % 2;
-    int lock_index = (1 << level) - 1 + group;
+  for (int level = levels_num - 1; level >= 0; level--) {
 
-    my_roles[level] = role;
-    my_locks[level] = locks[lock_index];
+    int role = node % 2;            // similar to id ":= node mod 2" from pseudo-code
+    node = node / 2;                // similar to "node := floor(node / 2)" from pseudo-code
+
+    int lock_index = (1 << level) - 1 + node;  // Compute the lock id that the process is trying to acquire at this level
+
+    my_roles[level] = role;                   // Role passed to peterson_acquire for this level
+    my_locks[level] = locks_ids[lock_index];  // ID number of Peterson lock for this level
   }
 
-  return my_index;
+  return current_process_index;
 }
 
 int tournament_acquire(void) {
 
-  for (int i = num_levels - 1; i >= 0; i--) {
+  for (int i = levels_num - 1; i >= 0; i--) {
     if (peterson_acquire(my_locks[i], my_roles[i]) < 0)
       return -1;
   }
@@ -67,7 +73,7 @@ int tournament_acquire(void) {
 }
 
 int tournament_release(void) {
-  for (int i = 0; i < num_levels; i++) {
+  for (int i = 0; i < levels_num; i++) {
     if (peterson_release(my_locks[i], my_roles[i]) < 0)
       return -1;
  }
